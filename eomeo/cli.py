@@ -9,16 +9,13 @@ logging.basicConfig(level=logging.DEBUG)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--filename")
+
+    parser.add_argument("path", default=".")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
-    if args.filename:
-        target_file = Path(args.filename)
-        analyzer.analyze_file(target_file)
-    else:
-        target_dir = Path(".")
-        analyzer.analyze_dir(target_dir)
+    if args.path:
+        analyzer.analyze(args.path)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from binaryninja import load
+from binaryninja import *
 
 from .pattern import cmdi
 
@@ -11,16 +11,34 @@ from .pattern import cmdi
 _ELF_MAGIC_NUMBER = b"\x7fELF"
 
 
-def is_regular_file(path: Path):
+def _is_regular_file(path: Path):
     return path.is_file() and not path.is_symlink()
 
 
-def is_elf_file(path: Path):
+def _is_regular_dir(path: Path):
+    return path.is_dir() and not path.is_symlink()
+
+
+def _is_elf_file(path: Path):
     with open(path, "rb") as f:
         magic_nuber = f.read(4)
     if magic_nuber == _ELF_MAGIC_NUMBER:
         return True
     return False
+
+
+def _is_regular_elf_file(path: Path):
+    return _is_regular_file(path) and _is_elf_file(path)
+
+
+def _bndb_path(path: Path):
+    if path.suffix == ".bndb":
+        return path
+    return Path(str(path) + ".bndb")
+
+
+def _analyze_bv_impl(bv: BinaryView):
+    cmdi.system_on_variable(bv)
 
 
 #
@@ -29,20 +47,40 @@ def is_elf_file(path: Path):
 
 
 def analyze_file(target_file: Path):
-    try:
+    if _is_regular_file(target_file) and _is_elf_file(target_file):
         logging.info(f"[*] Trying analyzing {target_file}")
-        # check existing bndb
         # -> if exist, -f option will force file analyze
-        bv = load(target_file)
-        cmdi.system_on_variable(bv)
-        bv.create_database(f"{bv.file.filename}.bndb")  # TODO: multithread scan
-        logging.info(f"[*] Done analyzing {target_file}")
+        bndb_file = _bndb_path(target_file)
+        if bndb_file.exists():
+            logging.info(
+                f"[*] Found existing bndb file, analyzing this ... {bndb_file}"
+            )
+            with load(bndb_file) as bv:
+                print(bv)
+                _analyze_bv_impl(bv)
+                bv.save_auto_snapshot()
+        else:
+            with load(target_file) as bv:
+                _analyze_bv_impl(bv)
+                bv.create_database(bndb_file)
 
-    except Exception as e:
-        logging.info(f"[-] Error analyzing {target_file}: {e}")
+        logging.info(f"[*] Done analyzing {target_file}")
 
 
 def analyze_dir(target_dir: Path):
     for target_file in target_dir.rglob("*"):
-        if is_regular_file(target_file) and is_elf_file(target_file):
+        if _is_regular_elf_file(target_file):
             analyze_file(target_file)
+        else:
+            logging.warn(f"[*] {target_file} seems not regular elf file")
+
+
+def analyze(target_path_str: str):
+    target_path = Path(target_path_str)
+
+    if _is_regular_dir(target_path):
+        analyze_dir(target_path)
+    elif _is_regular_elf_file(target_path):
+        analyze_file(target_path)
+    else:
+        logging.warn(f"[*] {target_path} seems not valid path")
