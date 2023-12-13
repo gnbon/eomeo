@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from tqdm import tqdm
 from binaryninja import *
 
 from .pattern import cmdi
@@ -67,7 +68,8 @@ def analyze_file(target_file: Path):
 
 
 def analyze_dir(target_dir: Path):
-    for target_file in target_dir.rglob("*"):
+    target_files = list(target_dir.rglob("*"))
+    for target_file in tqdm(target_files):
         if _is_regular_elf_file(target_file):
             analyze_file(target_file)
         else:
