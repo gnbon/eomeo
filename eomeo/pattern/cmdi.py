@@ -37,7 +37,7 @@ class CommandInjectionAnalyzer:
                 return
 
         self.bv.add_tag(
-            address, self.tag_name, f"Suspicious(Command Injection) #{self.count}"
+            address, self.tag_name, f"Suspicious(Command Injection) #{self.count:05d}"
         )
         self.count += 1
 
