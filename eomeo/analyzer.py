@@ -50,14 +50,12 @@ def _analyze_bv_impl(bv: BinaryView):
 def analyze_file(target_file: Path):
     if _is_regular_file(target_file) and _is_elf_file(target_file):
         logging.info(f"[*] Trying analyzing {target_file}")
-        # -> if exist, -f option will force file analyze
         bndb_file = _bndb_path(target_file)
         if bndb_file.exists():
             logging.info(
                 f"[*] Found existing bndb file, analyzing this ... {bndb_file}"
             )
             with load(bndb_file) as bv:
-                print(bv)
                 _analyze_bv_impl(bv)
                 bv.save_auto_snapshot()
         else:
@@ -83,5 +81,31 @@ def analyze(target_path_str: str):
         analyze_dir(target_path)
     elif _is_regular_elf_file(target_path):
         analyze_file(target_path)
+    else:
+        logging.warn(f"[*] {target_path} seems not valid path")
+
+
+def analyze_file_force(target_file: Path):
+    if _is_regular_file(target_file) and _is_elf_file(target_file):
+        logging.info(f"[*] Trying analyzing {target_file}")
+        bndb_file = _bndb_path(target_file)
+    if bndb_file.exists():
+        logging.info(f"[*] Found existing bndb file, removing this ... {bndb_file}")
+        bndb_file.unlink()
+
+    with load(target_file) as bv:
+        _analyze_bv_impl(bv)
+        bv.create_database(bndb_file)
+
+    logging.info(f"[*] Done analyzing {target_file}")
+
+
+def analyze_force(target_path_str: str):
+    target_path = Path(target_path_str)
+
+    if _is_regular_dir(target_path):
+        analyze_dir(target_path)
+    elif _is_regular_elf_file(target_path):
+        analyze_file_force(target_path)
     else:
         logging.warn(f"[*] {target_path} seems not valid path")
