@@ -38,7 +38,8 @@ def _bndb_path(path: Path):
 
 
 def _analyze_bv_impl(bv: BinaryView):
-    cmdi.system_on_variable(bv)
+    analyzer = cmdi.CommandInjectionAnalyzer(bv)
+    analyzer.analyze()
 
 
 #
